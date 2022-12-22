@@ -1,0 +1,10 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@ --with pkgkde_symbolshelper,kf5
+
+override_dh_clean:
+	rm -rf .clang-format
+	dh_clean
