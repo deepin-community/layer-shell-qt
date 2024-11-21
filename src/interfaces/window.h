@@ -9,6 +9,7 @@
 #define LAYERSHELLQTWINDOW_H
 
 #include <QObject>
+#include <QScreen>
 #include <QWindow>
 
 #include "layershellqt_export.h"
@@ -24,10 +25,10 @@ public:
     ~Window() override;
 
     enum Anchor {
-        AnchorTop = 1, // the top edge of the anchor rectangle
-        AnchorBottom = 2, // the bottom edge of the anchor rectangle
-        AnchorLeft = 4, // the left edge of the anchor rectangle
-        AnchorRight = 8, // the right edge of the anchor rectangle
+        AnchorTop = 1, ///< The top edge of the anchor rectangle
+        AnchorBottom = 2, ///< The bottom edge of the anchor rectangle
+        AnchorLeft = 4, ///< The left edge of the anchor rectangle
+        AnchorRight = 8, ///< The right edge of the anchor rectangle
     };
     Q_ENUM(Anchor);
     Q_DECLARE_FLAGS(Anchors, Anchor)
@@ -69,6 +70,14 @@ public:
     Layer layer() const;
 
     /**
+     * If set, the compositor will try to put the window on the given screen.
+     * If its not set, then the compositor will decide where to put the window.
+     * Under normal circumstances, this should be the active output.
+     */
+    void setDesiredOutput(QScreen *output);
+    QScreen *desiredOutput() const;
+
+    /**
      * Sets a string based identifier for this window.
      * This may be used by a compositor to determine stacking
      * order within a given layer.
@@ -83,6 +92,13 @@ public:
      * Ownership is not transferred
      */
     static Window *get(QWindow *window);
+
+Q_SIGNALS:
+    void anchorsChanged();
+    void exclusionZoneChanged();
+    void marginsChanged();
+    void keyboardInteractivityChanged();
+    void layerChanged();
 
 private:
     Window(QWindow *window);

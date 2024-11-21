@@ -36,9 +36,15 @@ libLayerShellQtInterface.so.5 liblayershellqtinterface5 #MINVER#
  _ZN12LayerShellQt6Window10setMarginsERK8QMargins@Base 5.21.90
  _ZN12LayerShellQt6Window11qt_metacallEN11QMetaObject4CallEiPPv@Base 5.21.90
  _ZN12LayerShellQt6Window11qt_metacastEPKc@Base 5.21.90
+ _ZN12LayerShellQt6Window12layerChangedEv@Base 5.25.90
+ _ZN12LayerShellQt6Window14anchorsChangedEv@Base 5.25.90
+ _ZN12LayerShellQt6Window14marginsChangedEv@Base 5.25.90
+ _ZN12LayerShellQt6Window16setDesiredOutputEP7QScreen@Base 5.24.90
  _ZN12LayerShellQt6Window16setExclusiveZoneEi@Base 5.21.90
  _ZN12LayerShellQt6Window16staticMetaObjectE@Base 5.21.90
+ _ZN12LayerShellQt6Window20exclusionZoneChangedEv@Base 5.25.90
  _ZN12LayerShellQt6Window24setKeyboardInteractivityENS0_21KeyboardInteractivityE@Base 5.21.90
+ _ZN12LayerShellQt6Window28keyboardInteractivityChangedEv@Base 5.25.90
  _ZN12LayerShellQt6Window3getEP7QWindow@Base 5.21.90
  _ZN12LayerShellQt6Window8setLayerENS0_5LayerE@Base 5.21.90
  _ZN12LayerShellQt6Window8setScopeERK7QString@Base 5.21.90
@@ -49,6 +55,7 @@ libLayerShellQtInterface.so.5 liblayershellqtinterface5 #MINVER#
  _ZN12LayerShellQt6WindowD2Ev@Base 5.21.90
  _ZNK12LayerShellQt20QWaylandLayerSurface10metaObjectEv@Base 5.21.90
  _ZNK12LayerShellQt6Window10metaObjectEv@Base 5.21.90
+ _ZNK12LayerShellQt6Window13desiredOutputEv@Base 5.24.90
  _ZNK12LayerShellQt6Window13exclusionZoneEv@Base 5.21.90
  _ZNK12LayerShellQt6Window21keyboardInteractivityEv@Base 5.21.90
  _ZNK12LayerShellQt6Window5layerEv@Base 5.21.90

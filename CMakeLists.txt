@@ -4,20 +4,18 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(layershellqt)
-set(PROJECT_VERSION "5.24.3")
+set(PROJECT_VERSION "5.27.11")
 set(PROJECT_VERSION_MAJOR 5)
 
 set(CMAKE_C_STANDARD 99)
 
-set(QT_MIN_VERSION "5.15.0")
-set(KF5_MIN_VERSION "5.86")
+set(QT_MIN_VERSION "5.15.2")
+set(KF5_MIN_VERSION "5.102.0")
 set(KDE_COMPILERSETTINGS_LEVEL "5.82")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS WaylandClient Qml)
-find_package(Qt5XkbCommonSupport REQUIRED PRIVATE)
 find_package(ECM ${KF5_MIN_VERSION} REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${ECM_MODULE_PATH})
 
@@ -25,6 +23,7 @@ include(KDEInstallDirs)
 include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 include(ECMSetupVersion)
+include(ECMDeprecationSettings)
 include(ECMGenerateHeaders)
 include(CMakePackageConfigHelpers)
 include(FeatureSummary)
@@ -32,10 +31,15 @@ include(GenerateExportHeader)
 include(KDEClangFormat)
 include(ECMQtDeclareLoggingCategory)
 
-find_package(WaylandScanner)
-find_package(QtWaylandScanner)
+
+find_package(Qt${QT_MAJOR_VERSION} ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS WaylandClient Qml)
+if (QT_MAJOR_VERSION EQUAL "5")
+    find_package(Qt5XkbCommonSupport REQUIRED PRIVATE)
+    find_package(QtWaylandScanner REQUIRED)
+endif()
+find_package(WaylandScanner REQUIRED)
 find_package(Wayland 1.3 COMPONENTS Client Server)
-find_package(WaylandProtocols)
+find_package(WaylandProtocols REQUIRED)
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(XKBCOMMON xkbcommon REQUIRED IMPORTED_TARGET)
@@ -51,10 +55,15 @@ ecm_setup_version(${PROJECT_VERSION} VARIABLE_PREFIX LAYERSHELLQT
 
 file(GLOB_RECURSE ALL_CLANG_FORMAT_SOURCE_FILES *.cpp *.h)
 kde_clang_format(${ALL_CLANG_FORMAT_SOURCE_FILES})
+
+ecm_set_disabled_deprecation_versions(QT 5.15.2
+    KF 5.101
+)
+
 add_subdirectory(src)
 add_subdirectory(tests)
 
-set(CMAKECONFIG_INSTALL_DIR ${KDE_INSTALL_LIBDIR}/cmake/LayerShellQt)
+set(CMAKECONFIG_INSTALL_DIR ${KDE_INSTALL_CMAKEPACKAGEDIR}/LayerShellQt)
 install(EXPORT LayerShellQtTargets
         NAMESPACE LayerShellQt::
         DESTINATION ${CMAKECONFIG_INSTALL_DIR}
