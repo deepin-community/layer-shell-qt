@@ -4,38 +4,39 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(layershellqt)
-set(PROJECT_VERSION "5.24.3")
-set(PROJECT_VERSION_MAJOR 5)
+set(PROJECT_VERSION "6.3.4")
+set(PROJECT_VERSION_MAJOR 6)
 
 set(CMAKE_C_STANDARD 99)
 
-set(QT_MIN_VERSION "5.15.0")
-set(KF5_MIN_VERSION "5.86")
+set(QT_MIN_VERSION "6.7.0")
+set(KF6_MIN_VERSION "6.10.0")
 set(KDE_COMPILERSETTINGS_LEVEL "5.82")
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt5 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS WaylandClient Qml)
-find_package(Qt5XkbCommonSupport REQUIRED PRIVATE)
-find_package(ECM ${KF5_MIN_VERSION} REQUIRED NO_MODULE)
+find_package(ECM ${KF6_MIN_VERSION} REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake ${ECM_MODULE_PATH})
 
 include(KDEInstallDirs)
 include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 include(ECMSetupVersion)
+include(ECMDeprecationSettings)
 include(ECMGenerateHeaders)
 include(CMakePackageConfigHelpers)
 include(FeatureSummary)
 include(GenerateExportHeader)
 include(KDEClangFormat)
 include(ECMQtDeclareLoggingCategory)
+include(ECMQmlModule)
+include(KDEGitCommitHooks)
 
-find_package(WaylandScanner)
-find_package(QtWaylandScanner)
+find_package(Qt6 ${QT_MIN_VERSION} CONFIG REQUIRED COMPONENTS WaylandClient Qml)
+find_package(WaylandScanner REQUIRED)
 find_package(Wayland 1.3 COMPONENTS Client Server)
-find_package(WaylandProtocols)
+find_package(WaylandProtocols REQUIRED)
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(XKBCOMMON xkbcommon REQUIRED IMPORTED_TARGET)
@@ -47,14 +48,21 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu90")
 ecm_setup_version(${PROJECT_VERSION} VARIABLE_PREFIX LAYERSHELLQT
                         VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/layershellqt_version.h"
                         PACKAGE_VERSION_FILE "${CMAKE_CURRENT_BINARY_DIR}/LayerShellQtConfigVersion.cmake"
-                        SOVERSION 5)
+                        SOVERSION ${PROJECT_VERSION_MAJOR})
 
 file(GLOB_RECURSE ALL_CLANG_FORMAT_SOURCE_FILES *.cpp *.h)
 kde_clang_format(${ALL_CLANG_FORMAT_SOURCE_FILES})
+
+kde_configure_git_pre_commit_hook(CHECKS CLANG_FORMAT)
+
+ecm_set_disabled_deprecation_versions(QT 6.8.1
+    KF 6.9.0
+)
+
 add_subdirectory(src)
 add_subdirectory(tests)
 
-set(CMAKECONFIG_INSTALL_DIR ${KDE_INSTALL_LIBDIR}/cmake/LayerShellQt)
+set(CMAKECONFIG_INSTALL_DIR ${KDE_INSTALL_CMAKEPACKAGEDIR}/LayerShellQt)
 install(EXPORT LayerShellQtTargets
         NAMESPACE LayerShellQt::
         DESTINATION ${CMAKECONFIG_INSTALL_DIR}

@@ -1,14 +1,18 @@
 /*
  *   SPDX-FileCopyrightText: 2021 Aleix Pol Gonzalez <aleixpol@blue-systems.com>
  *
- *   SPDX-License-Identifier: LGPL-3.0-or-later
+ *   SPDX-License-Identifier: LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL
  */
 
 #include "window.h"
-#include "../qwaylandlayersurface_p.h"
+#include "../qwaylandlayershellintegration_p.h"
+
 #include <layershellqt_logging.h>
-#include <private/qwaylandshellsurface_p.h>
-#include <private/qwaylandwindow_p.h>
+
+#include <QPointer>
+#include <optional>
+
+#include <QtWaylandClient/private/qwaylandwindow_p.h>
 
 using namespace LayerShellQt;
 
@@ -24,10 +28,12 @@ public:
     QString scope = QStringLiteral("window");
     Window::Anchors anchors = {Window::AnchorTop | Window::AnchorBottom | Window::AnchorLeft | Window::AnchorRight};
     int32_t exclusionZone = 0;
-    Window::KeyboardInteractivity keyboardInteractivity = Window::KeyboardInteractivityExclusive;
+    Window::Anchor exclusiveEdge = Window::AnchorNone;
+    Window::KeyboardInteractivity keyboardInteractivity = Window::KeyboardInteractivityOnDemand;
     Window::Layer layer = Window::LayerTop;
     QMargins margins;
-    QWaylandLayerSurface *getSurface() const;
+    Window::ScreenConfiguration screenConfiguration = Window::ScreenFromQWindow;
+    bool closeOnDismissed = true;
 };
 
 static QMap<QWindow *, Window *> s_map;
@@ -39,9 +45,9 @@ Window::~Window()
 
 void Window::setAnchors(Anchors anchors)
 {
-    d->anchors = anchors;
-    if (auto surface = d->getSurface()) {
-        surface->setAnchor(anchors);
+    if (d->anchors != anchors) {
+        d->anchors = anchors;
+        Q_EMIT anchorsChanged();
     }
 }
 
@@ -52,9 +58,9 @@ Window::Anchors Window::anchors() const
 
 void Window::setExclusiveZone(int32_t zone)
 {
-    d->exclusionZone = zone;
-    if (auto surface = d->getSurface()) {
-        surface->setExclusiveZone(zone);
+    if (d->exclusionZone != zone) {
+        d->exclusionZone = zone;
+        Q_EMIT exclusionZoneChanged();
     }
 }
 
@@ -63,11 +69,26 @@ int32_t Window::exclusionZone() const
     return d->exclusionZone;
 }
 
+void Window::setExclusiveEdge(Window::Anchor edge)
+{
+    if (d->exclusiveEdge == edge) {
+        return;
+    }
+
+    d->exclusiveEdge = edge;
+    Q_EMIT exclusiveEdgeChanged();
+}
+
+Window::Anchor Window::exclusiveEdge() const
+{
+    return d->exclusiveEdge;
+}
+
 void Window::setMargins(const QMargins &margins)
 {
-    d->margins = margins;
-    if (auto surface = d->getSurface()) {
-        surface->setMargins(margins);
+    if (d->margins != margins) {
+        d->margins = margins;
+        Q_EMIT marginsChanged();
     }
 }
 
@@ -78,9 +99,9 @@ QMargins Window::margins() const
 
 void Window::setKeyboardInteractivity(KeyboardInteractivity interactivity)
 {
-    d->keyboardInteractivity = interactivity;
-    if (auto surface = d->getSurface()) {
-        surface->setKeyboardInteractivity(interactivity);
+    if (d->keyboardInteractivity != interactivity) {
+        d->keyboardInteractivity = interactivity;
+        Q_EMIT keyboardInteractivityChanged();
     }
 }
 
@@ -91,9 +112,9 @@ Window::KeyboardInteractivity Window::keyboardInteractivity() const
 
 void Window::setLayer(Layer layer)
 {
-    d->layer = layer;
-    if (auto surface = d->getSurface()) {
-        surface->setLayer(layer);
+    if (d->layer != layer) {
+        d->layer = layer;
+        Q_EMIT layerChanged();
     }
 }
 
@@ -113,15 +134,60 @@ Window::Layer Window::layer() const
     return d->layer;
 }
 
+Window::ScreenConfiguration Window::screenConfiguration() const
+{
+    return d->screenConfiguration;
+}
+
+void Window::setScreenConfiguration(Window::ScreenConfiguration screenConfiguration)
+{
+    d->screenConfiguration = screenConfiguration;
+}
+
+bool Window::closeOnDismissed() const
+{
+    return d->closeOnDismissed;
+}
+
+void Window::setCloseOnDismissed(bool close)
+{
+    d->closeOnDismissed = close;
+}
+
 Window::Window(QWindow *window)
     : QObject(window)
     , d(new WindowPrivate(window))
 {
     s_map.insert(d->parentWindow, this);
+
+    window->create();
+
+    auto waylandWindow = dynamic_cast<QtWaylandClient::QWaylandWindow *>(window->handle());
+    if (!waylandWindow) {
+        qCWarning(LAYERSHELLQT) << window << "is not a wayland window. Not creating zwlr_layer_surface";
+        return;
+    }
+
+    static QWaylandLayerShellIntegration *shellIntegration = nullptr;
+    if (!shellIntegration) {
+        shellIntegration = new QWaylandLayerShellIntegration();
+        if (!shellIntegration->initialize(waylandWindow->display())) {
+            delete shellIntegration;
+            shellIntegration = nullptr;
+            qCWarning(LAYERSHELLQT) << "Failed to initialize layer-shell integration, possibly because compositor does not support the layer-shell protocol";
+            return;
+        }
+    }
+
+    waylandWindow->setShellIntegration(shellIntegration);
 }
 
 Window *Window::get(QWindow *window)
 {
+    if (!window) {
+        return nullptr;
+    }
+
     auto layerShellWindow = s_map.value(window);
     if (layerShellWindow) {
         return layerShellWindow;
@@ -129,20 +195,7 @@ Window *Window::get(QWindow *window)
     return new Window(window);
 }
 
-QWaylandLayerSurface *WindowPrivate::getSurface() const
+Window *Window::qmlAttachedProperties(QObject *object)
 {
-    if (!parentWindow) {
-        return nullptr;
-    }
-    auto ww = dynamic_cast<QtWaylandClient::QWaylandWindow *>(parentWindow->handle());
-    if (!ww) {
-        qCDebug(LAYERSHELLQT) << "window not a wayland window" << parentWindow;
-        return nullptr;
-    }
-    QWaylandLayerSurface *s = qobject_cast<QWaylandLayerSurface *>(ww->shellSurface());
-    if (!s) {
-        qCDebug(LAYERSHELLQT) << "window not using wlr-layer-shell" << parentWindow << ww->shellSurface();
-        return nullptr;
-    }
-    return s;
+    return get(qobject_cast<QWindow *>(object));
 }

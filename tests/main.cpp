@@ -14,7 +14,6 @@
 
 #include <QMetaEnum>
 
-#include <interfaces/shell.h>
 #include <interfaces/window.h>
 
 using namespace LayerShellQt;
@@ -33,7 +32,7 @@ template<typename T>
 T stringToEnum(QMetaEnum metaEnum, const QString &str)
 {
     T ret = {};
-    const auto splitted = str.split(QLatin1Char('|'));
+    const auto splitted = str.split(QLatin1Char('|'), Qt::SkipEmptyParts);
     for (const auto &value : splitted) {
         ret |= T(metaEnum.keyToValue(qPrintable(value)));
     }
@@ -42,7 +41,7 @@ T stringToEnum(QMetaEnum metaEnum, const QString &str)
 
 class BasicWindow : public QRasterWindow
 {
-    void paintEvent(QPaintEvent *)
+    void paintEvent(QPaintEvent *) override
     {
         QPainter p(this);
         p.fillRect(QRect(0, 0, width(), height()), Qt::red);
@@ -51,8 +50,6 @@ class BasicWindow : public QRasterWindow
 
 int main(int argc, char **argv)
 {
-    Shell::useLayerShell();
-
     QGuiApplication app(argc, argv);
 
     const auto layerMetaEnum = QMetaEnum::fromType<Window::Layer>();
@@ -79,6 +76,8 @@ int main(int argc, char **argv)
     BasicWindow window;
 
     LayerShellQt::Window *layerShell = LayerShellQt::Window::get(&window);
+    layerShell->setLayer(Window::LayerBottom);
+
     if (parser.isSet(marginsOption)) {
         int margins = parser.value(marginsOption).toInt();
         layerShell->setMargins({margins, margins, margins, margins});
@@ -101,6 +100,10 @@ int main(int argc, char **argv)
     }
 
     window.show();
+
+    BasicWindow window2;
+    window2.resize(400, 400);
+    window2.show();
 
     // just so you don't block yourself out whilst testing
     QTimer::singleShot(5000, &app, &QGuiApplication::quit);
